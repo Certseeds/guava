@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: "${{ matrix.root-pom }} on JDK ${{ matrix.java }}"
+    strategy:
+      matrix:
+        java: [ 8, 11 ]
+        root-pom: [ 'pom.xml', 'android/pom.xml' ]
+    runs-on: windows-latest
+    env:
+      ROOT_POM: ${{ matrix.root-pom }}
+    steps:
+      # Cancel any previous runs for the same branch that are still running.
+      - name: 'Check out repository'
+        uses: actions/checkout@v3
+      - name: 'Set up JDK ${{ matrix.java }}'
+        uses: actions/setup-java@v3.3.0
+        with:
+          java-version: ${{ matrix.java }}
+          distribution: 'zulu'
+          cache: 'maven'
+      - name: 'Install'
+        shell: bash
+        run: mvn -B -D org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn install -U -D skipTests=true -f $ROOT_POM
+      - name: 'Test'
+        shell: bash
+        run: mvn -B -P !standard-with-extra-repos verify -U -D maven.javadoc.skip=true -f $ROOT_POM
